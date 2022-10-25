@@ -12,7 +12,7 @@ namespace VirtualTable.Controllers
             session.SetString(key, JsonConvert.SerializeObject(value));
         }
 
-        public static T GetObjectFromJson<T>(this ISession session, string key)
+        public static T? GetObjectFromJson<T>(this ISession session, string key)
         {
             var value = session.GetString(key);
 
@@ -26,7 +26,7 @@ namespace VirtualTable.Controllers
     {
 
         private readonly ILogger<ShapeController> _logger;
-        private Shape[] tab = null;
+        private Shape[] tab;
 
         //status wybranej figury
         public int? selectedFigure
