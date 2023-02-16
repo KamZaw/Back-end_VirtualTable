@@ -2,14 +2,27 @@
 {
     public class Point
     {
-        public Point(int x, int y)
+ 
+
+        public Point()
         {
-            X = x;
-            Y = y;
+            x = 0;
+            y = 0;
+        }
+        public Point(Point pt)
+        {
+            x = pt.x;
+            y = pt.y;
         }
 
-        public int X { get; set; }
-        public int Y { get; set; }
+        public Point(int x, int y)
+        {
+            this.x = x;
+            this.y = y;
+        }
+
+        public int x { get; set; }
+        public int y { get; set; }
 
     }
 }

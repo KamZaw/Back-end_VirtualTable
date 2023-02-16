@@ -40,6 +40,22 @@
         "net6.0": {
           "targetAlias": "net6.0",
           "dependencies": {
+            "AspNetCore.Firebase.Authentication": {
+              "target": "Package",
+              "version": "[2.0.1, )"
+            },
+            "FirebaseAdmin": {
+              "target": "Package",
+              "version": "[2.3.0, )"
+            },
+            "FirebaseAuthentication.net": {
+              "target": "Package",
+              "version": "[3.7.2, )"
+            },
+            "FirebaseDatabase.NetCore50": {
+              "target": "Package",
+              "version": "[4.0.6, )"
+            },
             "Newtonsoft.Json": {
               "target": "Package",
               "version": "[13.0.1, )"
@@ -67,7 +83,7 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\6.0.305\\RuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\6.0.309\\RuntimeIdentifierGraph.json"
         }
       }
     }

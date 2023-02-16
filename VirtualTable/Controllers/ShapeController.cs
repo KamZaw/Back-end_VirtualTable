@@ -1,24 +1,13 @@
-﻿using Microsoft.AspNetCore.Cors;
+﻿using Firebase.Database;
+using Firebase.Database.Query;
+using Microsoft.AspNetCore.Cors;
 using Microsoft.AspNetCore.Mvc;
-using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+using System.Text.Json;
 
 namespace VirtualTable.Controllers
 {
 
-    public static class SessionShapes
-    {
-        public static void SetObjectAsJson(this ISession session, string key, object value)
-        {
-            session.SetString(key, JsonConvert.SerializeObject(value));
-        }
-
-        public static T? GetObjectFromJson<T>(this ISession session, string key)
-        {
-            var value = session.GetString(key);
-
-            return value == null ? default(T) : JsonConvert.DeserializeObject<T>(value);
-        }
-    }
 
     [ApiController]
     [Route("[controller]")]
@@ -26,60 +15,144 @@ namespace VirtualTable.Controllers
     {
 
         private readonly ILogger<ShapeController> _logger;
-        private Shape[] tab;
-
-        //status wybranej figury
-        public int? selectedFigure
-        {
-            get
-            {
-                return HttpContext.Session.GetInt32("A");
-            }
-            set
-            {
-                if(value is not null)
-                    HttpContext.Session.SetInt32("A", (int)value);
-            }
-        }
 
 
         public ShapeController(ILogger<ShapeController> logger)
         {
             _logger = logger;
-
-            tab = Enumerable.Range(1, 2).Select(index => new Shape
+        }
+        [HttpPut("AudioChunk")]
+        public async void AudioChunk(AudioChunks audio)
+        {
+            Console.WriteLine("Doszło " + audio.id);
+        }
+        [HttpPut("AddShape")]
+        public async void AddShape(Shape shape)
+        {
+            if(shape == null)
             {
-                Date = DateTime.Now.AddDays(index),
-                sDescription = index + "",
-                iColor = index == 1 ? 0x0000FF : 0xFF0000,  //domyślnie niebieski kolor linii
-            }).ToArray();
-
-            //prostokąt
-            tab[0].addPoint(new Point(0, 0));
-            tab[0].addPoint(new Point(100, 0));
-            tab[0].addPoint(new Point(100, 100));
-            tab[0].addPoint(new Point(0, 100));
-
-            //trójkąt
-            tab[1].addPoint(new Point(0, 0));
-            tab[1].addPoint(new Point(300, 0));
-            tab[1].addPoint(new Point(0, 300));        
+                Console.WriteLine("Pusty obiekt");
+                return;
+            }
+            try
+            {
+                var dt = DateTime.Now;
+                shape.Date = dt;
+                shape.ticks = $"{dt.Ticks}";
+                var secret = "RW0RFB4CYNlpIU7NrNUqeVYmQs2t8YCzmARAIgLX";
+                FirebaseClient firebase = new FirebaseClient(
+                  "https://wirtualnatablica-4faf3-default-rtdb.firebaseio.com/",
+                  new FirebaseOptions
+                  {
+                      AuthTokenAsyncFactory = () => Task.FromResult(secret)
+                  });
+                await firebase
+                .Child("Sessions")
+                .Child("Sesja_1")
+                .Child(shape.ticks)
+                .Child("Shape")
+                .PutAsync(shape);
+            }
+            catch (Exception)
+            {
+                Console.WriteLine ($"{StatusCodes.Status500InternalServerError}, Error updating data");
+            }
         }
 
-        [HttpDelete("id")]
-        public void rmShape(int id)
+        [HttpDelete("delete/{ticks}")]
+        public async void rmShape(String ticks)
         {
-  //          selectedFigure = id;
+            if (ticks == null || ticks.Length <= 0 || ticks.Contains("undefined")) return;
+            try
+            {
+                DateTime dt = new DateTime(long.Parse(ticks));
+
+                Console.WriteLine($">>{dt.ToShortTimeString()}");
+
+                var secret = "RW0RFB4CYNlpIU7NrNUqeVYmQs2t8YCzmARAIgLX";
+                FirebaseClient firebase = new FirebaseClient(
+                  "https://wirtualnatablica-4faf3-default-rtdb.firebaseio.com/",
+                  new FirebaseOptions
+                  {
+                      AuthTokenAsyncFactory = () => Task.FromResult(secret)
+                  });
+                await firebase
+                .Child("Sessions")
+                .Child("Sesja_1")
+                .Child(ticks)
+                .DeleteAsync();
+            }
+            catch (Exception)
+            {
+                Console.WriteLine($"{StatusCodes.Status500InternalServerError}, Error updating data");
+            }
         }
 
         [HttpGet("GetShapes")]
-        public IEnumerable<Shape> Get()
+        public async Task<IEnumerable<Object>> GetAsync()
         {
 
+            var secret = "RW0RFB4CYNlpIU7NrNUqeVYmQs2t8YCzmARAIgLX";
 
-            //if(selectedFigure > 0)
-            //    tab[1] = tab[0];
-            return tab;
+            FirebaseClient firebase = new FirebaseClient(
+              "https://wirtualnatablica-4faf3-default-rtdb.firebaseio.com/",
+              new FirebaseOptions
+              {
+                  AuthTokenAsyncFactory = () => Task.FromResult(secret)
+              });
+
+
+            DateTime dt = DateTime.Now;
+
+            var sesje = await firebase
+           .Child("Sessions")
+           .Child("Sesja_1")
+            //.Child("638025818114077190")
+            //.OrderByKey()
+            .OnceAsync<object>();
+
+            LinkedList<Object> ll = new LinkedList<Object>();
+            //wyszukaj daty (podkatalogi) dla obiektw IShape
+            foreach (var s in sesje)
+            {
+                JObject jo = JObject.Parse(s.Object.ToString());
+                //Console.WriteLine(s.Object);
+                //jeśli obiekt typu Text to rejestruj nasłuch dla tego obiektu 
+                //if (jo.Properties().First().Name.CompareTo("Text") == 0) 
+                //{
+                //    var obj = await firebase
+                //    .Child("Sessions")
+                //    .Child("Sesja_1")
+                //    .Child(s.Key)
+                //    .OnceAsync<Text>();
+
+                //    foreach (var shape in obj)
+                //    {
+                //        ll.AddLast(shape.Object);
+                //    }
+                //    //Console.WriteLine(d.Key + "_" + (d.Object));
+                //};
+                //jeśli obiekt typu Shape to rejestruj nasłuch dla tego obiektu 
+                if (jo.Properties().First().Name.CompareTo("Shape") == 0)
+                {
+                    var obj = await firebase
+                    .Child("Sessions")
+                    .Child("Sesja_1")
+                    .Child(s.Key)
+                    .OnceAsync<Shape>();
+                    foreach (var shape in obj)
+                    {
+                        ll.AddLast(shape.Object);
+                    }
+                }
+            }
+            //tab = ll.ToArray();
+            var options = new JsonSerializerOptions
+            {
+                WriteIndented = true
+            };
+            //String ret = JsonSerializer.Serialize<object>(ll.ToArray(), options);
+            return ll.ToArray();
         }
     }
 }
